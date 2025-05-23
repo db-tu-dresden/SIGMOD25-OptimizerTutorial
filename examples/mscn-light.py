@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from collections.abc import Iterable
 
@@ -10,6 +12,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 class MSCNlight(pb.CardinalityGenerator):
     def __init__(self) -> None:
+        super().__init__(False)
         self.model = GradientBoostingRegressor()
         self.featurizer = st.SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -72,7 +75,7 @@ def main() -> None:
         .build()
     )
 
-    results = pb.optimize_and_execute_workload(workload.first(5), optimizer)
+    results = pb.optimize_and_execute_workload(workload, optimizer)
     results.to_csv(args.out, index=False)
 
 

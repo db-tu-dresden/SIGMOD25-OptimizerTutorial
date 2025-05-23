@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 
 import numpy as np
@@ -93,7 +95,7 @@ def main() -> None:
         .build()
     )
 
-    results = pb.optimize_and_execute_workload(workload.first(5), optimizer)
+    results = pb.optimize_and_execute_workload(workload, optimizer)
     results.to_csv(args.out, index=False)
 
 

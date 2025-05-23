@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import itertools
 from collections.abc import Iterable
@@ -8,6 +10,7 @@ import postbound as pb
 
 class UpperBoundCardinalities(pb.CardinalityGenerator):
     def __init__(self, target_db: pb.Database) -> None:
+        super().__init__(False)
         self.target_db = target_db
 
     # Two alternatives
@@ -38,11 +41,19 @@ class UpperBoundCardinalities(pb.CardinalityGenerator):
         rhs_topk = self.target_db.statistics().most_common_values(rhs_column, k=1)
         rhs_mcf: int = rhs_topk[1]
 
-        lhs_card: int = self.target_db.statistics().total_rows(lhs)
-        rhs_card: int = self.target_db.statistics().total_rows(rhs)
+        lhs_card = self.filtered_card(query, lhs)
+        rhs_card = self.filtered_card(query, rhs)
 
-        upper_bound = min(lhs_card / lhs_mcf, rhs_card / rhs_mcf) * lhs_mcf * rhs_mcf
-        return pb.Cardinality(upper_bound)
+        upper_bound: pb.Cardinality = (
+            min(lhs_card / lhs_mcf, rhs_card / rhs_mcf) * lhs_mcf * rhs_mcf
+        )
+        return upper_bound
+
+    def filtered_card(
+        self, query: pb.SqlQuery, table: pb.TableReference
+    ) -> pb.Cardinality:
+        subquery = pb.transform.extract_query_fragment(query, table)
+        return self.target_db.optimizer().cardinality_estimate(subquery)
 
     def generate_plan_parameters(
         self,
@@ -71,8 +82,8 @@ class UpperBoundCardinalities(pb.CardinalityGenerator):
             rhs_topk = self.target_db.statistics().most_common_values(rhs_column, k=1)
             rhs_mcf: int = rhs_topk[1]
 
-            lhs_card: int = self.target_db.statistics().total_rows(lhs)
-            rhs_card: int = self.target_db.statistics().total_rows(rhs)
+            lhs_card = self.filtered_card(query, lhs)
+            rhs_card = self.filtered_card(query, rhs)
 
             upper_bound = (
                 min(lhs_card / lhs_mcf, rhs_card / rhs_mcf) * lhs_mcf * rhs_mcf
@@ -90,9 +101,16 @@ class PessimisticOperators(pb.PhysicalOperatorSelection):
         self, query: pb.SqlQuery, join_order: Optional[pb.LogicalJoinTree]
     ) -> pb.PhysicalOperatorAssignment:
         assignment = pb.PhysicalOperatorAssignment()
+
+        # we can use the same strategy as in the BAO-light example
         assignment.set_operator_enabled_globally(pb.JoinOperator.NestedLoopJoin, False)
         assignment.set_operator_enabled_globally(pb.JoinOperator.HashJoin, True)
         assignment.set_operator_enabled_globally(pb.JoinOperator.SortMergeJoin, False)
+
+        # alternatively, set the joins from the join order directly (make sure that the join order is actually set first)
+        # for join in join_order.iterjoins():
+        #    assignment.add(pb.JoinOperator.HashJoin, join)
+
         return assignment
 
     def describe(self) -> pb.util.jsondict:
@@ -132,7 +150,7 @@ def main() -> None:
         .build()
     )
 
-    results = pb.optimize_and_execute_workload(workload.first(5), optimizer)
+    results = pb.optimize_and_execute_workload(workload, optimizer)
     results.to_csv(args.out, index=False)
 
 
