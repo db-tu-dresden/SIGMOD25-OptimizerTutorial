@@ -14,17 +14,27 @@ class MSCNlight(pb.CardinalityGenerator):
     def __init__(self) -> None:
         super().__init__(False)
         self.model = GradientBoostingRegressor()
-        self.featurizer = st.SentenceTransformer("all-MiniLM-L6-v2")
+        self.embedding = st.SentenceTransformer("all-MiniLM-L6-v2")
+
+    def featurize(self, query: pb.SqlQuery) -> np.ndarray:
+        tables = query.tables()
+        predicates = query.predicates()
+
+        from_clause_features = self.embedding.encode([str(tables)])
+        join_features = self.embedding.encode([str(predicates.joins())])
+        filter_features = self.embedding.encode([str(predicates.filters())])
+
+        return np.concat([from_clause_features, join_features, filter_features], axis=1)
 
     def train(self, samples: pd.DataFrame) -> None:
-        samples["features"] = samples["query"].map(self.featurizer.encode)
+        samples["features"] = samples["query"].map(pb.parse_query).map(self.featurize)
         self.model.fit(np.stack(samples["features"]), samples["cardinality"])
 
     def calculate_estimate(
         self, query: pb.SqlQuery, tables: Iterable[pb.TableReference]
     ) -> pb.Cardinality:
         subquery = pb.transform.extract_query_fragment(query, tables)
-        features = self.featurizer.encode(str(subquery))
+        features = self.embedding.encode(subquery)
         estimate: np.float64 = self.model.predict([features])[0]
         return pb.Cardinality(max(estimate, 0))
 
