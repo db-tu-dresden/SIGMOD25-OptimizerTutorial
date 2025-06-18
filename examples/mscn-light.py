@@ -75,7 +75,7 @@ def main() -> None:
         .build()
     )
 
-    results = pb.optimize_and_execute_workload(workload, optimizer)
+    results = pb.optimize_and_execute_workload(workload, optimizer, logger="tqdm")
     results.to_csv(args.out, index=False)
 
 

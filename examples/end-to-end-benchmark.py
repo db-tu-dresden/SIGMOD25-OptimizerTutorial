@@ -79,6 +79,7 @@ def main() -> None:
             query_preparation=query_prep,
             timeout=120,
             include_labels=True,
+            logger="tqdm",
         )
         results = pb.experiments.prepare_export(results)
         results.to_csv(args.out_dir / "benchmark-native.csv", index=False)
@@ -103,6 +104,7 @@ def main() -> None:
             query_preparation=query_prep,
             timeout=120,
             include_labels=True,
+            logger="tqdm",
         )
         results = pb.experiments.prepare_export(results)
         results.to_csv(args.out_dir / "benchmark-mscn-light.csv", index=False)
@@ -127,6 +129,7 @@ def main() -> None:
             query_preparation=query_prep,
             timeout=120,
             include_labels=True,
+            logger="tqdm",
         )
         results = pb.experiments.prepare_export(results)
         results.to_csv(args.out_dir / "benchmark-bao-light.csv", index=False)
@@ -148,6 +151,7 @@ def main() -> None:
             query_preparation=query_prep,
             timeout=120,
             include_labels=True,
+            logger="tqdm",
         )
         results = pb.experiments.prepare_export(results)
         results.to_csv(args.out_dir / "benchmark-pessimistic.csv", index=False)

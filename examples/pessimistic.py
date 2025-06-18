@@ -13,9 +13,16 @@ class UpperBoundCardinalities(pb.CardinalityGenerator):
         super().__init__(False)
         self.target_db = target_db
 
-    # Two alternatives
+    def filtered_card(
+        self, query: pb.SqlQuery, table: pb.TableReference
+    ) -> pb.Cardinality:
+        """Determines the (estimated) cardinality of a base relation after all filters have been applied"""
+        subquery = pb.transform.extract_query_fragment(query, table)
+        return self.target_db.optimizer().cardinality_estimate(subquery)
+
+    # We provide two possible implementations:
     # once again using calculate_estimate(), or
-    # using generate_plan_parameters(), which also demonstrates how to determine the base joins
+    # using generate_plan_parameters(), which also shows how to determine the base joins and how to work with join orders
 
     def calculate_estimate(
         self, query: pb.SqlQuery, tables: Iterable[pb.TableReference]
@@ -49,21 +56,29 @@ class UpperBoundCardinalities(pb.CardinalityGenerator):
         )
         return upper_bound
 
-    def filtered_card(
-        self, query: pb.SqlQuery, table: pb.TableReference
-    ) -> pb.Cardinality:
-        subquery = pb.transform.extract_query_fragment(query, table)
-        return self.target_db.optimizer().cardinality_estimate(subquery)
-
     def generate_plan_parameters(
         self,
         query: pb.SqlQuery,
         join_order: Optional[pb.LogicalJoinTree],
         operator_assignment: Optional[pb.PhysicalOperatorAssignment],
     ) -> pb.PlanParameterization:
+        #
+        # We don't acutally need to implement this method
+        # The CardinalityGenerator has a default implementation that performs the same workflow but delegates to
+        # calculate_estimate() for the actual cardinality generation.
+        # We implement it anyway to demonstrate how to work with the plan parameters and join orders
+        #
+
         parameters = pb.PlanParameterization()
 
-        for base_join in itertools.combinations(query.tables(), 2):
+        if join_order:
+            base_joins = [
+                join.tables() for join in join_order.iterjoins() if join.is_base_join()
+            ]
+        else:
+            base_joins = itertools.combinations(query.tables(), 2)
+
+        for base_join in base_joins:
             lhs, rhs = base_join
             join_predicate = query.predicates().joins_between(lhs, rhs)
             if not join_predicate:
@@ -144,13 +159,13 @@ def main() -> None:
     workload = pb.workloads.read_workload(args.workload)
 
     optimizer = (
-        pb.TwoStageOptimizationPipeline(pg_instance)
+        pb.MultiStageOptimizationPipeline(pg_instance)
         .setup_physical_operator_selection(PessimisticOperators())
         .setup_plan_parameterization(UpperBoundCardinalities(pg_instance))
         .build()
     )
 
-    results = pb.optimize_and_execute_workload(workload, optimizer)
+    results = pb.optimize_and_execute_workload(workload, optimizer, logger="tqdm")
     results.to_csv(args.out, index=False)
 
 
