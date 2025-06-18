@@ -188,3 +188,5 @@ LocalTest*
 localtest*
 .psycopg_connection*
 .query_cache_*
+*venv*
+*.bkp
