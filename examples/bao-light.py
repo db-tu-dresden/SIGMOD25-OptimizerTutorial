@@ -10,7 +10,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 
 class BAOlight(pb.CompleteOptimizationAlgorithm):
-    def __init__(self, target_db: pb.Database) -> None:
+    def __init__(self, target_db: pb.postgres.PostgresInterface) -> None:
         self.target_db = target_db
         self.model = GradientBoostingRegressor()
         self.featurizer = st.SentenceTransformer("all-MiniLM-L6-v2")
@@ -25,6 +25,9 @@ class BAOlight(pb.CompleteOptimizationAlgorithm):
         no_merge.set_operator_enabled_globally(pb.JoinOperator.SortMergeJoin, False)
 
         self.hint_sets = [no_nlj, no_hash, no_merge]
+        self.default_config = self.target_db.current_configuration(
+            runtime_changeable_only=True
+        )
 
     def train(self, samples: pd.DataFrame) -> None:
         samples["features"] = samples["query_plan"].map(self.featurizer.encode)
@@ -37,6 +40,7 @@ class BAOlight(pb.CompleteOptimizationAlgorithm):
             hinted_query = self.target_db.hinting().generate_hints(
                 query, physical_operators=hint_set
             )
+            self.target_db.apply_configuration(self.default_config)
             query_plan = self.target_db.optimizer().query_plan(hinted_query)
 
             prediction = self.model.predict(
