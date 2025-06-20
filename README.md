@@ -31,10 +31,6 @@ See [Structure](#-structure) for how this repo is organized.
 To follow along the live demo parts of our tutorial, you first need to setup PostBOUND on your system. We recommend using a
 Docker-based installation.
 
-> [!TIP]
-> We have created a codespace to connect to a readily set-up container in your browser. Just make sure to start the Postgres
-> server using `cd /postbound/db-support/postgres && . ./postgres-start.sh` once you are connected.
-
 For a local setup, either use a pre-built image, or create one on your own.
 The pre-built image is available via `docker pull rbergm/postbound-sigmod25` and needs to download approximately 1.6 GB.
 To build your own image, first clone the PostBOUND repo from https://github.com/rbergm/PostBOUND.
