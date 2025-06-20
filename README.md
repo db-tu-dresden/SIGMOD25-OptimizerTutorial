@@ -31,7 +31,13 @@ See [Structure](#-structure) for how this repo is organized.
 To follow along the live demo parts of our tutorial, you first need to setup PostBOUND on your system. We recommend using a
 Docker-based installation.
 
-First, clone the PostBOUND repo from https://github.com/rbergm/PostBOUND.
+> [!TIP]
+> We have created a codespace to connect to a readily set-up container in your browser. Just make sure to start the Postgres
+> server using `cd /postbound/db-support/postgres && . ./postgres-start.sh` once you are connected.
+
+For a local setup, either use a pre-built image, or create one on your own.
+The pre-built image is available via `docker pull rbergm/postbound-sigmod25` and needs to download approximately 1.6 GB.
+To build your own image, first clone the PostBOUND repo from https://github.com/rbergm/PostBOUND.
 Afterwards, build your own Docker image like so:
 
 ```sh
@@ -57,13 +63,20 @@ Afterwards, you should be able to log into your container with the usual `docker
 The shell environment will automatically have a Python virtual environment activated that contains the most recent PostBOUND
 version.
 
-In the container, clone the tutorial repository using and change into the new directory. From there, all that is left to do is
-activate the config file for your server connection and to run one of the examples:
+In the container, clone the tutorial repository and change into the new directory. From there, all that is left to do is
+activate the config file for your server connection and install the dependencies. Afterwards, you can just run one of the
+examples.
 
 ```sh
+# basic setup
 git clone https://github.com/db-tu-dresden/SIGMOD25-OptimizerTutorial.git
 cd SIGMOD25-OptimizerTutorial
+
+# activate the config file and install all dependencies
 cp .psycopg_connection_stats.sample .psycopg_connection
+pip install -r requirements.txt
+
+# run an example
 python3 examples/mscn-light.py \
     --samples data/cardinality-samples.csv \
     --workload workload/ \
