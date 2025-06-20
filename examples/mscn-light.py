@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import warnings
 from collections.abc import Iterable
 
 import numpy as np
@@ -8,6 +9,10 @@ import pandas as pd
 import postbound as pb
 import sentence_transformers as st
 from sklearn.ensemble import GradientBoostingRegressor
+
+# We suppress hint warnings here, because pg_hint_plan cannot hint cardinalities for base tables.
+# PostBOUND issues warnings if it encounters such hints for pg_hint_plan.
+warnings.filterwarnings("ignore", category=pb.db.HintWarning, module="postbound")
 
 
 class MSCNlight(pb.CardinalityGenerator):
@@ -24,7 +29,7 @@ class MSCNlight(pb.CardinalityGenerator):
         join_features = self.embedding.encode([str(predicates.joins())])
         filter_features = self.embedding.encode([str(predicates.filters())])
 
-        return np.concat([from_clause_features, join_features, filter_features], axis=1)
+        return np.concat([from_clause_features, join_features, filter_features], axis=1)[0]
 
     def train(self, samples: pd.DataFrame) -> None:
         samples["features"] = samples["query"].map(pb.parse_query).map(self.featurize)
@@ -34,7 +39,7 @@ class MSCNlight(pb.CardinalityGenerator):
         self, query: pb.SqlQuery, tables: Iterable[pb.TableReference]
     ) -> pb.Cardinality:
         subquery = pb.transform.extract_query_fragment(query, tables)
-        features = self.embedding.encode(subquery)
+        features = self.featurize(subquery)
         estimate: np.float64 = self.model.predict([features])[0]
         return pb.Cardinality(max(estimate, 0))
 
@@ -80,8 +85,8 @@ def main() -> None:
     mscn.train(samples)
 
     optimizer = (
-        pb.TextBookOptimizationPipeline(pg_instance)
-        .setup_cardinality_estimator(mscn)
+        pb.MultiStageOptimizationPipeline(pg_instance)
+        .setup_plan_parameterization(mscn)
         .build()
     )
 

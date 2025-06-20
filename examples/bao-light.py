@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import warnings
 
 import numpy as np
 import pandas as pd
 import postbound as pb
 import sentence_transformers as st
 from sklearn.ensemble import GradientBoostingRegressor
+
+warnings.filterwarnings("ignore", category=pb.db.HintWarning, module="postbound")
 
 
 class BAOlight(pb.CompleteOptimizationAlgorithm):
@@ -30,8 +33,8 @@ class BAOlight(pb.CompleteOptimizationAlgorithm):
         )
 
     def train(self, samples: pd.DataFrame) -> None:
-        samples["features"] = samples["query_plan"].map(self.featurizer.encode)
-        self.model.fit(np.stack(samples["features"]), samples["runtime"])
+        features = self.featurizer.encode(samples["query_plan"])
+        self.model.fit(features, samples["runtime"])
 
     def optimize_query(self, query: pb.SqlQuery) -> pb.QueryPlan:
         predictions: dict[pb.QueryPlan, np.float64] = {}
