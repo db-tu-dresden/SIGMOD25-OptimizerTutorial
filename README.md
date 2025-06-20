@@ -28,40 +28,27 @@ See [Structure](#-structure) for how this repo is organized.
 
 ## 💻 Setup
 
-To follow along the live demo parts of our tutorial, you first need to setup PostBOUND on your system. We recommend using a
-Docker-based installation.
-
-For a local setup, either use a pre-built image, or create one on your own.
-The pre-built image is available via `docker pull rbergm/postbound-sigmod25` and needs to download approximately 1.6 GB.
-To build your own image, first clone the PostBOUND repo from https://github.com/rbergm/PostBOUND.
-Afterwards, build your own Docker image like so:
+To follow along the live demo parts of our tutorial, you first need to setup PostBOUND on your system. You can download a
+PostBOUND image specifically created for this tutorial via
 
 ```sh
-docker build -t postbound \
-    --build-arg TIMEZONE=$(cat /etc/timezone) \
-    --build-arg SETUP_STATS=true \
-    .
+docker pull rbergm/postbound-sigmod25
 ```
 
-This process will probably take a while since it involves compiling a Postgres server from source and importing the Stats
-database. Once the image is ready, create a new container:
+This will need to download approximately 1.6 GB. Once the download completes, you can start a new container, for example using
 
 ```sh
-docker run -dt \
-    --shm-size 4G \
-    --name postbound \
-    --volume $PWD/postbound-docker:/postbound/public \
-    --publish 5432:5432 \
-    postbound
+docker run -d --name postbound-sigmod25 rbergm/postbound-sigmod25
 ```
 
-Afterwards, you should be able to log into your container with the usual `docker exec -it postbound /bin/bash`.
+Afterwards, you should be able to log into your container with the usual `docker exec -it postbound-sigmod25 /bin/bash`.
 The shell environment will automatically have a Python virtual environment activated that contains the most recent PostBOUND
 version.
 
 In the container, clone the tutorial repository and change into the new directory. From there, all that is left to do is
-activate the config file for your server connection and install the dependencies. Afterwards, you can just run one of the
-examples.
+activate the config file for your server connection and install the dependencies. Since we use embedding-based models for
+simplicity, this requires downloading another couple of gigabytes of data (e.g. CUDA interfaces). You can test the installation
+by running one of the examples:
 
 ```sh
 # basic setup
@@ -76,13 +63,14 @@ pip install -r requirements.txt
 python3 examples/mscn-light.py \
     --samples data/cardinality-samples.csv \
     --workload workload/ \
-    --connect $(cat .psycopg_connection) \
+    --connect .psycopg_connection \
     --out test-results.csv
 cat test-results.csv
 ```
 
 > [!TIP]
-> All of the setup steps are explained in much more depth in the [PostBOUND documentation](https://postbound.readthedocs.io/en/latest/setup.html)
+> You can also setup PostBOUND manually by following the instructions from the
+> [PostBOUND documentation](https://postbound.readthedocs.io/en/latest/setup.html)
 
 
 ## 📖 Structure
